@@ -62,3 +62,4 @@ jobs:
         files: ${{ env.filename }}.apk
         name: ${{ env.version }}
         tag_name: ${{ env.version }}
+        token: ${{ secrets.GH_TOKEN }}
