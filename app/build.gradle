@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'pw.hexed.fingerprint'
+
+    compileSdk 34    
+    
+    defaultConfig {
+        applicationId 'pw.hexed.fingerprint'
+        minSdk 31
+        targetSdk 34
+        versionCode 100
+        versionName '1.0.0'
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled true
+            debuggable false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.biometric:biometric:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
