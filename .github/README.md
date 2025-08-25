@@ -13,9 +13,9 @@ See related issues:
 
 0. Download [the latest apk](https://github.com/flameshikari/termux-fingerprint/releases/latest) and install it on the phone.
 
-1. Install `tergent` from Termux repos:
+1. Install dependencies in Termux:
     ```sh
-    pkg install tergent
+    pkg install jq tergent
     ```
 
 2. Generate key(s) if you don't have any:
