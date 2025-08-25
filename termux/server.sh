@@ -1,12 +1,17 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-ACTIVITY=pw.hexed.fingerprint/.SplashActivity
+ACTIVITY=pw.hexed.fingerprint/.MainActivity
 ADDRESS=127.0.0.1
 PORT=10451
 
-am start -n "$ACTIVITY" &> /dev/null
+STATUS=false
 
-nc $ADDRESS -l -p $PORT | while read CODE; do
-    [[ $CODE == "0" ]] && exit 0
-    [[ $CODE != "0" ]] && exit $CODE
+am start -n $ACTIVITY &> /dev/null
+
+while true; do
+    nc $ADDRESS -l -p $PORT | while read LINE; do
+        STATUS=$(echo $LINE | jq -e 'has("auth_result")' 2> /dev/null && true || false)
+        [[ $STATUS ]] && (echo $LINE | jq -M; exit 0)
+    done
+    [[ $STATUS ]] && break
 done
