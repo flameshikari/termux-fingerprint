@@ -34,20 +34,14 @@ jobs:
       with:
         gradle-version: 8.8
 
-    - name: Build APK
+    - name: Build AAB & APK
       run: |
         gradle assembleRelease
-
-    - name: Build AAB
-      run: |
         gradle bundleRelease
-
-    - name: Move unsigned APK && AAB
-      run: |
         mv -v app/build/outputs/apk/release/*.apk .
         mv -v app/build/outputs/bundle/release/*.aab .
 
-    - name: Sign APK & AAB
+    - name: Sign AAB & APK
       uses: kevin-david/zipalign-sign-android-release@main
       id: sign_step
       with:
@@ -57,15 +51,16 @@ jobs:
         signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
         releaseDirectory: .
 
-    - name: Rename APK & AAB
+    - name: Rename AAB & APK
       env:
         f0: ${{ steps.sign_step.outputs.signedReleaseFile0 }}
         f1: ${{ steps.sign_step.outputs.signedReleaseFile1 }}
       run: |
-        mv -v ${{ env.f0 }} ${{ env.filename }}.$(echo ${{ env.f0 }} | awk -F. '{if (NF>1) print $NF}')
-        mv -v ${{ env.f1 }} ${{ env.filename }}.$(echo ${{ env.f1 }} | awk -F. '{if (NF>1) print $NF}')
+        for signed in ${{ env.f0 }} ${{ env.f1 }}; do
+          mv -v $signed ${{ env.filename }}.$(echo $signed | awk -F. '{if (NF>1) print $NF}')
+        done
 
-    - name: Upload signed APK in Artifacts
+    - name: Upload signed AAB & APK in Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.filename }}
