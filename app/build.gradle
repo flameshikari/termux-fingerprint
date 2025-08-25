@@ -10,9 +10,9 @@ android {
     defaultConfig {
         applicationId 'pw.hexed.fingerprint'
         minSdk 31
-        targetSdk 34
-        versionCode 100
-        versionName '1.0.0'
+        targetSdk 35
+        versionCode 10001
+        versionName '1.0.1'
     }
     
     buildTypes {
