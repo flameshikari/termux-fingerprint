@@ -5,14 +5,14 @@ plugins {
 android {
     namespace 'pw.hexed.fingerprint'
 
-    compileSdk 34    
+    compileSdk 35  
     
     defaultConfig {
         applicationId 'pw.hexed.fingerprint'
         minSdk 31
         targetSdk 35
-        versionCode 10001
-        versionName '1.0.1'
+        versionCode 100000
+        versionName '1.0.0'
     }
     
     buildTypes {

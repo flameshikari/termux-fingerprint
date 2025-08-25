@@ -4,13 +4,13 @@ run-name: Build @ ${{ github.sha }}
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Version
-        default: 1.0.0
+      publish:
+        type: boolean
+        default: true
 
 env:
-  filename: fingerprint
-  version: ${{ inputs.version }}
+  filename: termux-fingerprint
+  publish: ${{ inputs.publish }}
 
 concurrency: ${{ github.ref }}
 
@@ -29,10 +29,11 @@ jobs:
         distribution: temurin
         java-version: 20
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: 8.8
+    - name: Extract version
+      run: |
+        cat << EOF  >> $GITHUB_ENV
+        version=$(grep versionName app/build.gradle | awk -F"'" '{print $2}')
+        EOF
 
     - name: Build AAB & APK
       run: |
@@ -43,7 +44,7 @@ jobs:
 
     - name: Sign AAB & APK
       uses: kevin-david/zipalign-sign-android-release@main
-      id: sign_step
+      id: sign
       with:
         alias: ${{ secrets.KEYSTORE_ALIAS }}
         keyPassword: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -53,8 +54,8 @@ jobs:
 
     - name: Rename AAB & APK
       env:
-        f0: ${{ steps.sign_step.outputs.signedReleaseFile0 }}
-        f1: ${{ steps.sign_step.outputs.signedReleaseFile1 }}
+        f0: ${{ steps.sign.outputs.signedReleaseFile0 }}
+        f1: ${{ steps.sign.outputs.signedReleaseFile1 }}
       run: |
         for signed in ${{ env.f0 }} ${{ env.f1 }}; do
           mv -v $signed ${{ env.filename }}.$(echo $signed | awk -F. '{if (NF>1) print $NF}')
@@ -71,7 +72,9 @@ jobs:
 
     - name: Create a GitHub release
       uses: softprops/action-gh-release@v2
-      if: github.repository_owner == 'flameshikari/termux-fingerprint'
+      if: |
+        github.repository_owner == 'flameshikari/termux-fingerprint' &&
+        inputs.publish == true
       with:
         files: ${{ env.filename }}.apk
         name: ${{ env.version }}
