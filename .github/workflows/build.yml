@@ -78,11 +78,13 @@ jobs:
           mv -v $signed ${{ env.filename }}.$(echo $signed | awk -F. '{if (NF>1) print $NF}')
         done
 
-    - name: Upload signed APK in Artifacts
+    - name: Upload signed AAB & APK in Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.filename }}
-        path: ${{ env.filename }}.apk
+        path: |
+          ${{ env.filename }}.aab
+          ${{ env.filename }}.apk
         retention-days: 7
 
     - name: Create a GitHub release
