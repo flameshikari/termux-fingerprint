@@ -46,7 +46,7 @@ jobs:
         whatsnew="whatsnew"
         changelog="$whatsnew/whatsnew-en-US"
         mkdir -pv "$whatsnew"
-        echo "${{ inputs.changelog }}" | base64 -d > "$changelog"
+        echo "${{ inputs.changelog }}" | base64 -d | tee "$changelog"
         cat << EOF >> $GITHUB_ENV
         whatsnew=$whatsnew
         changelog=$changelog
