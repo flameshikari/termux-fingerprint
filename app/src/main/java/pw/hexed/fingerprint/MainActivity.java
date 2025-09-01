@@ -23,7 +23,7 @@ import java.util.concurrent.Executor;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int SENSOR_TIMEOUT = 10000;
+    private static final int SENSOR_TIMEOUT = 30000;
     private static final int MAX_ATTEMPTS = 5;
 
     private static final String ERROR_NO_HARDWARE = "ERROR_NO_HARDWARE";
@@ -32,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String ERROR_LOCKOUT = "ERROR_LOCKOUT";
     private static final String ERROR_TOO_MANY_FAILED_ATTEMPTS = "ERROR_TOO_MANY_FAILED_ATTEMPTS";
     private static final String ERROR_CANCEL = "ERROR_CANCEL";
+    private static final String ERROR_USER_CANCELED = "ERROR_USER_CANCELED";
+    private static final String ERROR_CANCELED = "ERROR_CANCELED";
 
     private static final String AUTH_RESULT_SUCCESS = "AUTH_RESULT_SUCCESS";
     private static final String AUTH_RESULT_FAILURE = "AUTH_RESULT_FAILURE";
@@ -74,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
             } else if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
                 Toast.makeText(this, "No fingerprints enrolled", Toast.LENGTH_SHORT).show();
                 appendFingerprintError(ERROR_NO_ENROLLED_FINGERPRINTS);
+            } else {
+                appendFingerprintError("ERROR_UNKNOWN_" + canAuthenticate);
             }
             setAuthResult(AUTH_RESULT_FAILURE);
             postFingerprintResult();
@@ -85,8 +89,15 @@ public class MainActivity extends AppCompatActivity {
             new BiometricPrompt.AuthenticationCallback() {
                 @Override
                 public void onAuthenticationError(int errorCode, CharSequence errString) {
+                    // Handle user cancellation, programmatic/system cancellation, and negative button
+                    if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                        appendFingerprintError(ERROR_USER_CANCELED);
+                    }
                     if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                         appendFingerprintError(ERROR_CANCEL);
+                    }
+                    if (errorCode == BiometricPrompt.ERROR_CANCELED) {
+                        appendFingerprintError(ERROR_CANCELED);
                     }
                     if (errorCode == BiometricPrompt.ERROR_LOCKOUT) {
                         appendFingerprintError(ERROR_LOCKOUT);
@@ -125,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
             .setTitle(" ")
             .setSubtitle(" ")
-            .setNegativeButtonText("Cancel")
+            .setNegativeButtonText(" ")
             .setConfirmationRequired(false)
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build();
@@ -148,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject json = new JSONObject();
             List<String> filteredErrors = new ArrayList<>();
             for (String error : fingerprintResult.errors) {
-                if (error.matches("^ERROR_[A-Z_]+$")) {
+                if (error.matches("^ERROR_[A-Z_]+$") || error.startsWith("ERROR_UNKNOWN_")) {
                     filteredErrors.add(error);
                 }
             }

@@ -4,13 +4,18 @@ run-name: Build @ ${{ github.sha }}
 on:
   workflow_dispatch:
     inputs:
+      changelog:
+        description: Changelog [base64]
+        required: true
       publish:
         type: boolean
         default: true
+        description: Publish
 
 env:
+  token: ${{ secrets.GH_TOKEN || github.token }}
   filename: termux-fingerprint
-  publish: ${{ inputs.publish }}
+  owner: flameshikari
 
 concurrency: ${{ github.ref }}
 
@@ -29,10 +34,22 @@ jobs:
         distribution: temurin
         java-version: 20
 
-    - name: Extract version
+    - name: Extract Values
       run: |
-        cat << EOF  >> $GITHUB_ENV
+        cat << EOF >> $GITHUB_ENV
         version=$(grep versionName app/build.gradle | awk -F"'" '{print $2}')
+        package_name=$(grep applicationId app/build.gradle | awk -F"'" '{print $2}')
+        EOF
+
+    - name: Create changelog
+      run: |
+        whatsnew="whatsnew"
+        changelog="$whatsnew/whatsnew-en-US"
+        mkdir -pv "$whatsnew"
+        echo "${{ inputs.changelog }}" | base64 -d > "$changelog"
+        cat << EOF >> $GITHUB_ENV
+        whatsnew=$whatsnew
+        changelog=$changelog
         EOF
 
     - name: Build AAB & APK
@@ -61,22 +78,34 @@ jobs:
           mv -v $signed ${{ env.filename }}.$(echo $signed | awk -F. '{if (NF>1) print $NF}')
         done
 
-    - name: Upload signed AAB & APK in Artifacts
+    - name: Upload signed APK in Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.filename }}
-        path: |
-          ${{ env.filename }}.aab
-          ${{ env.filename }}.apk
+        path: ${{ env.filename }}.apk
         retention-days: 7
 
     - name: Create a GitHub release
       uses: softprops/action-gh-release@v2
-      if: |
-        github.repository_owner == 'flameshikari/termux-fingerprint' &&
-        inputs.publish == true
       with:
         files: ${{ env.filename }}.apk
         name: ${{ env.version }}
         tag_name: ${{ env.version }}
-        token: ${{ secrets.GH_TOKEN }}
+        token: ${{ env.token }}
+        body_path: ${{ env.changelog }}
+      if: |
+        github.repository_owner == ${{ env.owner }} &&
+        inputs.publish == true
+
+    - name: Upload AAB to Google Play 
+      uses: r0adkll/upload-google-play@v1
+      with:
+        releaseFiles: ${{ env.filename }}.aab
+        packageName: ${{ env.package_name }}
+        serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT }}
+        mappingFile: app/build/outputs/mapping/release/mapping.txt
+        whatsNewDirectory: ${{ env.whatsnew }}
+        inAppUpdatePriority: 5
+      if: |
+        github.repository_owner == ${{ env.owner }} &&
+        inputs.publish == true

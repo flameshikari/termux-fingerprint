@@ -1,8 +1,6 @@
 # Termux Fingerprint
 
-It's a simple app that solves the problem with using fingerprint scanning in Termux on Android 14.
-
-See related issues:
+It's a simple app that solves the problem with using fingerprint scanning in Termux on Android 14. See related issues:
 
 - https://github.com/termux/termux-api/issues/661
 - https://github.com/aeolwyr/tergent/issues/20
@@ -11,11 +9,13 @@ See related issues:
 
 ## Setup
 
-0. Download [the latest apk](https://github.com/flameshikari/termux-fingerprint/releases/latest) and install it on the phone.
+0. Download [the latest apk](https://github.com/flameshikari/termux-fingerprint/releases/latest) (or from [Google Play](https://play.google.com/store/apps/details?id=pw.hexed.fingerprint)) and install it on the phone.
 
 1. Install dependencies in Termux:
+    > nmap-based `nc` is also suitable, just change `netcat-openbsd` to `nmap`
+    
     ```sh
-    pkg install jq tergent
+    pkg install jq tergent netcat-openbsd
     ```
 
 2. Generate key(s) if you don't have any:
@@ -35,34 +35,24 @@ See related issues:
 3. Download the server script:
 
     ```sh
+    TARGET=~/.ssh/bin/fingerprint
     mkdir -p ~/.ssh/bin
-    curl -sL https://raw.githubusercontent.com/flameshikari/termux-fingerprint/refs/heads/master/termux/server.sh > ~/.ssh/bin/fingerprint
-    chmod +x ~/.ssh/bin/fingerprint
-    ```
+    curl -sL https://github.com/flameshikari/termux-fingerprint/raw/refs/heads/master/termux/.ssh/bin/fingerprint > "$TARGET"
+    chmod +x "$TARGET"
 
 4. Add a rule in the ssh config:
 
     ```sh
-    Host *
+    Match host * exec ~/.ssh/bin/fingerprint
         PKCS11Provider /data/data/com.termux/files/usr/lib/libtergent.so
-        Match exec $HOME/.ssh/bin/fingerprint
-    ```
-
-    or match only specific hosts:
-
-    ```sh
-    Host example.com
-        PKCS11Provider /data/data/com.termux/files/usr/lib/libtergent.so
-        Match exec $HOME/.ssh/bin/fingerprint
     ```
 
 5. Try to connect to the host that has public key from your keystore.
 
 ## How It Works
 
-1. Let's assume a ssh connetion to any host that has a public key from a hardware keystore
-2. `match exec` from `.ssh/config` runs the script before connecting to the host
-3. The script starts `pw.hexed.fingerprint/.SplashActivity` activity, switching from Termux to my fingerprint app; also it starts a server on `localhost:10451` and waits for a request
-4. After scanning, the app sends a request to `localhost:10451`, the script closes if the request is successful, automatically switching back to Termux and continuing the connection to the host
-
-> the pipeline is undone; there are plans to add more logic processing and error handling, but for now this is MVP
+1. You're making an SSH connection to any host that has a public key exported from your phone's hardware keystore
+2. Before the connection `Match` keyword from the SSH config executes the script
+3. The script starts a simple TCP server and opens the app, then the fingerprint scanner popups on the screen and waits for your finger (jesus christ)
+4. After scanning, the app sends a JSON data to the TCP server based on the authentication result and closes itself, returning you to Termux
+5. If the script returns 0, the SSH client continues the connection to the host using keys from unlocked keystore, else it fallbacks to password input if the host accepts it
