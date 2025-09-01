@@ -104,7 +104,7 @@ jobs:
       with:
         releaseFiles: ${{ env.filename }}.aab
         packageName: ${{ env.package_name }}
-        serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT }}
+        serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
         mappingFile: app/build/outputs/mapping/release/mapping.txt
         whatsNewDirectory: ${{ env.whatsnew }}
         inAppUpdatePriority: 5
