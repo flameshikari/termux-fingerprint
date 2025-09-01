@@ -4,13 +4,18 @@ run-name: Build @ ${{ github.sha }}
 on:
   workflow_dispatch:
     inputs:
+      changelog:
+        description: Changelog [base64]
+        required: true
       publish:
         type: boolean
         default: true
+        description: Publish
 
 env:
+  token: ${{ secrets.GH_TOKEN || github.token }}
   filename: termux-fingerprint
-  publish: ${{ inputs.publish }}
+  owner: flameshikari
 
 concurrency: ${{ github.ref }}
 
@@ -31,9 +36,20 @@ jobs:
 
     - name: Extract Values
       run: |
-        cat << EOF  >> $GITHUB_ENV
+        cat << EOF >> $GITHUB_ENV
         version=$(grep versionName app/build.gradle | awk -F"'" '{print $2}')
         package_name=$(grep applicationId app/build.gradle | awk -F"'" '{print $2}')
+        EOF
+
+    - name: Create changelog
+      run: |
+        whatsnew="whatsnew"
+        changelog="$whatsnew/whatsnew-en-US"
+        mkdir -pv "$whatsnew"
+        echo "${{ inputs.changelog }}" | base64 -d > "$changelog"
+        cat << EOF >> $GITHUB_ENV
+        whatsnew=$whatsnew
+        changelog=$changelog
         EOF
 
     - name: Build AAB & APK
@@ -75,9 +91,10 @@ jobs:
         files: ${{ env.filename }}.apk
         name: ${{ env.version }}
         tag_name: ${{ env.version }}
-        token: ${{ secrets.GH_TOKEN }}
+        token: ${{ env.token }}
+        body_path: ${{ env.changelog }}
       if: |
-        github.repository_owner == 'flameshikari' &&
+        github.repository_owner == ${{ env.owner }} &&
         inputs.publish == true
 
     - name: Upload AAB to Google Play 
@@ -87,8 +104,8 @@ jobs:
         packageName: ${{ env.package_name }}
         serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT }}
         mappingFile: app/build/outputs/mapping/release/mapping.txt
-        whatsNewDirectory: changelog
+        whatsNewDirectory: ${{ env.whatsnew }}
         inAppUpdatePriority: 5
       if: |
-        github.repository_owner == 'flameshikari' &&
+        github.repository_owner == ${{ env.owner }} &&
         inputs.publish == true
