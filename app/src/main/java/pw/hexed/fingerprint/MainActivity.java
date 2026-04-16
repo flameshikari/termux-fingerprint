@@ -1,11 +1,7 @@
 package pw.hexed.fingerprint;
 
-import android.os.Build;
 import android.os.Bundle;
-import android.graphics.Color;
-import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricPrompt;
@@ -25,6 +21,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int SENSOR_TIMEOUT = 30000;
     private static final int MAX_ATTEMPTS = 5;
+    private static final int CONNECT_RETRIES = 30;
+    private static final int CONNECT_RETRY_DELAY = 100;
 
     private static final String ERROR_NO_HARDWARE = "ERROR_NO_HARDWARE";
     private static final String ERROR_NO_ENROLLED_FINGERPRINTS = "ERROR_NO_ENROLLED_FINGERPRINTS";
@@ -41,29 +39,21 @@ public class MainActivity extends AppCompatActivity {
 
     private FingerprintResult fingerprintResult = new FingerprintResult();
     private boolean postedResult = false;
+    private boolean authStarted = false;
+    private int resultPort = -1;
+    private BiometricPrompt biometricPrompt;
+    private BiometricPrompt.PromptInfo promptInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        overridePendingTransition(0, 0);
         resetFingerprintResult();
 
         FrameLayout layout = new FrameLayout(this);
-        layout.setBackgroundColor(Color.BLACK);
         setContentView(layout);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().setStatusBarColor(Color.BLACK);
-        }
-
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_IMMERSIVE
-            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_FULLSCREEN
-        );
+        resultPort = getIntent().getIntExtra("port", -1);
 
         BiometricManager biometricManager = BiometricManager.from(this);
         int canAuthenticate = biometricManager.canAuthenticate(
@@ -71,10 +61,8 @@ public class MainActivity extends AppCompatActivity {
         );
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
             if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
-                Toast.makeText(this, "No fingerprint scanner found!", Toast.LENGTH_SHORT).show();
                 appendFingerprintError(ERROR_NO_HARDWARE);
             } else if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
-                Toast.makeText(this, "No fingerprints enrolled", Toast.LENGTH_SHORT).show();
                 appendFingerprintError(ERROR_NO_ENROLLED_FINGERPRINTS);
             } else {
                 appendFingerprintError("ERROR_UNKNOWN_" + canAuthenticate);
@@ -85,11 +73,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         Executor executor = ContextCompat.getMainExecutor(this);
-        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor,
+        biometricPrompt = new BiometricPrompt(this, executor,
             new BiometricPrompt.AuthenticationCallback() {
                 @Override
                 public void onAuthenticationError(int errorCode, CharSequence errString) {
-                    // Handle user cancellation, programmatic/system cancellation, and negative button
                     if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
                         appendFingerprintError(ERROR_USER_CANCELED);
                     }
@@ -127,23 +114,28 @@ public class MainActivity extends AppCompatActivity {
                         appendFingerprintError(ERROR_LOCKOUT);
                         setAuthResult(AUTH_RESULT_FAILURE);
                         postFingerprintResult();
-                        finishAffinity();
-                        System.exit(0);
                     }
                 }
             });
 
-        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+        promptInfo = new BiometricPrompt.PromptInfo.Builder()
             .setTitle(" ")
             .setSubtitle(" ")
             .setNegativeButtonText(" ")
             .setConfirmationRequired(false)
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus || authStarted || biometricPrompt == null || promptInfo == null) return;
+        authStarted = true;
 
         biometricPrompt.authenticate(promptInfo);
 
-        decorView.postDelayed(() -> {
+        getWindow().getDecorView().postDelayed(() -> {
             if (!postedResult) {
                 appendFingerprintError(ERROR_TIMEOUT);
                 biometricPrompt.cancelAuthentication();
@@ -155,6 +147,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void postFingerprintResult() {
         if (postedResult) return;
+        postedResult = true;
+
+        String payload = buildPayload();
+        if (resultPort > 0) {
+            sendToServer(payload);
+        } else {
+            finishAndClearAnimation();
+        }
+    }
+
+    private void finishAndClearAnimation() {
+        finishAffinity();
+        overridePendingTransition(0, 0);
+    }
+
+    private String buildPayload() {
         try {
             JSONObject json = new JSONObject();
             List<String> filteredErrors = new ArrayList<>();
@@ -171,23 +179,28 @@ public class MainActivity extends AppCompatActivity {
             json.put("errors", errorsArr);
             json.put("failed_attempts", fingerprintResult.failedAttempts);
             json.put("auth_result", fingerprintResult.authResult);
-            sendToServer(json.toString());
+            return json.toString();
         } catch (Exception e) {
-            // ignore errors
+            return "{\"auth_result\":\"" + AUTH_RESULT_UNKNOWN + "\"}";
         }
-        postedResult = true;
-        finishAffinity();
     }
 
     private void sendToServer(String result) {
         new Thread(() -> {
-            try {
-                Socket socket = new Socket("127.0.0.1", 10451);
-                socket.getOutputStream().write((result + "\n").getBytes());
-                socket.close();
-            } catch (Exception e) {
-                // ignore errors
+            for (int i = 0; i < CONNECT_RETRIES; i++) {
+                try (Socket socket = new Socket("127.0.0.1", resultPort)) {
+                    socket.getOutputStream().write((result + "\n").getBytes());
+                    break;
+                } catch (Exception e) {
+                    try {
+                        Thread.sleep(CONNECT_RETRY_DELAY);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
             }
+            runOnUiThread(this::finishAndClearAnimation);
         }).start();
     }
 

@@ -1,5 +1,5 @@
-name: Build
-run-name: Build @ ${{ github.sha }}
+name: Release
+run-name: Release @ ${{ github.sha }}
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ env:
   filename: termux-fingerprint
   owner: flameshikari
 
-concurrency: ${{ github.ref }}
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   build:
@@ -99,7 +99,7 @@ jobs:
         github.repository_owner == ${{ env.owner }} &&
         inputs.publish == true
 
-    - name: Upload AAB to Google Play 
+    - name: Upload AAB to Google Play
       uses: r0adkll/upload-google-play@v1
       with:
         releaseFiles: ${{ env.filename }}.aab
