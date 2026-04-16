@@ -9,10 +9,12 @@
             android:exported="true"
             android:theme="@style/Transparent"
             android:excludeFromRecents="true">
+            <!-- Uncomment to show the app icon in the launcher.
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            -->
         </activity>
     </application>
 </manifest>
