@@ -119,7 +119,7 @@ The fingerprint prompt should appear over Termux. Authenticate with a finger; SS
 
 ## Usage Examples
 
-### Per-Host Gating
+### Per-host Gating
 
 Only require a fingerprint for specific hosts:
 
@@ -295,7 +295,7 @@ CI builds are split into two `workflow_dispatch`-only pipelines:
 
 ## Troubleshooting
 
-### Prompt Flashes And Disappears
+### Prompt Flashes and Disappears
 
 This is the original Android 14 eviction. Likely causes:
 
@@ -306,11 +306,11 @@ This is the original Android 14 eviction. Likely causes:
 
 `termux-keystore list` returns `[]` → script exits silently. You have no keys. Run `termux-keystore generate ...` (see [Generate Keys](#generate-keys)).
 
-### Command Not Found In SSH
+### Command Not Found in SSH
 
 `termux-fingerprint: command not found` inside an SSH session is intentional. The script's first line refuses to run if `$SSH_CLIENT` or `$SSH_TTY` is set, so you can't accidentally chain fingerprint prompts from a remote shell into your phone. Running it locally in Termux works fine.
 
-### Empty Errors On Failure
+### Empty Errors on Failure
 
 `AUTH_RESULT_FAILURE` with empty `errors` means the Activity was killed before it could categorise the error (e.g., you hit home/recents during the prompt, or the system process restarted). Retry.
 
@@ -318,7 +318,7 @@ This is the original Android 14 eviction. Likely causes:
 
 Some OEM skins (MIUI, OneUI, HyperOS, etc.) override window transition animations at the system level and ignore `FLAG_ACTIVITY_NO_ANIMATION`. Not fixable from inside the app — the disabling is already done via theme + `overridePendingTransition(0, 0)` + `am --activity-no-animation`.
 
-### Port Already In Use
+### Port Already in Use
 
 `nc: bind: Address already in use` is extremely unlikely (port is randomized over a 30000-wide range), but if it happens, just re-run. The script picks a fresh port each invocation.
 
