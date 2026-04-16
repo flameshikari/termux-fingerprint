@@ -260,8 +260,7 @@ Key versions (see [`app/build.gradle`](app/build.gradle)):
 - `compileSdk`: 35
 - `minSdk`: 31
 - `targetSdk`: 35
-- `androidx.biometric`: 1.1.0
-- `androidx.appcompat`: 1.6.1
+- `androidx.biometric`: 1.1.0 (pulls in `androidx.fragment` transitively — the only other dep)
 
 ### Local Build
 
