@@ -17,6 +17,9 @@ env:
   filename: termux-fingerprint
   owner: flameshikari
 
+permissions:
+  contents: write
+
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
