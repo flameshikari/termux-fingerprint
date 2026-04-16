@@ -1,0 +1,44 @@
+name: Debug
+run-name: Debug @ ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+
+env:
+  filename: termux-fingerprint
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: 20
+
+    - name: Bump versionCode
+      run: |
+        version_code=$(date +%s)
+        sed -i "s/versionCode .*/versionCode $version_code/" app/build.gradle
+        echo "versionCode=$version_code" >> $GITHUB_ENV
+        grep -E 'versionCode|versionName' app/build.gradle
+
+    - name: Build debug APK
+      run: |
+        gradle assembleDebug
+        mv -v app/build/outputs/apk/debug/*.apk ${{ env.filename }}-debug.apk
+
+    - name: Upload debug APK in Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.filename }}-debug
+        path: ${{ env.filename }}-debug.apk
+        retention-days: 7

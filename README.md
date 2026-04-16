@@ -288,7 +288,10 @@ The resulting APK ends up at `app/build/outputs/apk/debug/app-debug.apk` on the 
 
 ### CI Build
 
-CI builds live in [`.github/workflows/build.yml`](.github/workflows/build.yml) (`workflow_dispatch`-only; supports both signed release builds and unsigned debug builds via the `debug` input).
+CI builds are split into two `workflow_dispatch`-only pipelines:
+
+- [`.github/workflows/release.yml`](.github/workflows/release.yml) — signed APK + AAB, GitHub Release, Play Store upload.
+- [`.github/workflows/debug.yml`](.github/workflows/debug.yml) — unsigned debug APK for testing; bumps `versionCode` to the current Unix timestamp so consecutive debug installs always replace the previous one.
 
 ## Troubleshooting
 

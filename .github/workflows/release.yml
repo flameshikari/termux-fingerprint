@@ -1,27 +1,23 @@
-name: Build
-run-name: ${{ inputs.debug && 'Build (Debug)' || 'Build' }} @ ${{ github.sha }}
+name: Release
+run-name: Release @ ${{ github.sha }}
 
 on:
   workflow_dispatch:
     inputs:
-      debug:
-        type: boolean
-        default: false
-        description: Debug
       changelog:
         description: Changelog [base64]
-        required: false
+        required: true
       publish:
         type: boolean
         default: true
         description: Publish
 
 env:
-  token: ${{ github.token }}
+  token: ${{ secrets.GH_TOKEN || github.token }}
   filename: termux-fingerprint
   owner: flameshikari
 
-concurrency: ${{ github.ref }}
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   build:
@@ -30,7 +26,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v5
 
     - name: Setup Java
       uses: actions/setup-java@v5
@@ -46,7 +42,6 @@ jobs:
         EOF
 
     - name: Create changelog
-      if: inputs.debug == false
       run: |
         whatsnew="whatsnew"
         changelog="$whatsnew/whatsnew-en-US"
@@ -57,14 +52,7 @@ jobs:
         changelog=$changelog
         EOF
 
-    - name: Build debug APK
-      if: inputs.debug == true
-      run: |
-        gradle assembleDebug
-        mv -v app/build/outputs/apk/debug/*.apk ${{ env.filename }}-debug.apk
-
-    - name: Build release AAB & APK
-      if: inputs.debug == false
+    - name: Build AAB & APK
       run: |
         gradle assembleRelease
         gradle bundleRelease
@@ -72,7 +60,6 @@ jobs:
         mv -v app/build/outputs/bundle/release/*.aab .
 
     - name: Sign AAB & APK
-      if: inputs.debug == false
       uses: kevin-david/zipalign-sign-android-release@main
       id: sign
       with:
@@ -83,7 +70,6 @@ jobs:
         releaseDirectory: .
 
     - name: Rename AAB & APK
-      if: inputs.debug == false
       env:
         f0: ${{ steps.sign.outputs.signedReleaseFile0 }}
         f1: ${{ steps.sign.outputs.signedReleaseFile1 }}
@@ -93,21 +79,12 @@ jobs:
         done
 
     - name: Upload signed AAB & APK in Artifacts
-      if: inputs.debug == false
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.filename }}
         path: |
           ${{ env.filename }}.aab
           ${{ env.filename }}.apk
-        retention-days: 7
-
-    - name: Upload debug APK in Artifacts
-      if: inputs.debug == true
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.filename }}-debug
-        path: ${{ env.filename }}-debug.apk
         retention-days: 7
 
     - name: Create a GitHub release
@@ -120,7 +97,6 @@ jobs:
         body_path: ${{ env.changelog }}
       if: |
         github.repository_owner == ${{ env.owner }} &&
-        inputs.debug == false &&
         inputs.publish == true
 
     - name: Upload AAB to Google Play
@@ -134,5 +110,4 @@ jobs:
         inAppUpdatePriority: 5
       if: |
         github.repository_owner == ${{ env.owner }} &&
-        inputs.debug == false &&
         inputs.publish == true
