@@ -11,7 +11,7 @@ android {
         applicationId 'pw.hexed.fingerprint'
         minSdk 31
         targetSdk 35
-        versionCode 200000
+        versionCode 200001
         versionName '2.0.0'
     }
     
