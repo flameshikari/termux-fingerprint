@@ -1,7 +1,10 @@
 package pw.hexed.fingerprint;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import androidx.biometric.BiometricPrompt;
 import androidx.biometric.BiometricManager;
@@ -46,14 +49,34 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        resultPort = getIntent().getIntExtra("port", -1);
+        boolean launcherMode = resultPort <= 0;
+
+        if (launcherMode) {
+            setTheme(R.style.Black);
+        }
         super.onCreate(savedInstanceState);
         overridePendingTransition(0, 0);
         resetFingerprintResult();
 
         FrameLayout layout = new FrameLayout(this);
+        if (launcherMode) {
+            layout.setBackgroundColor(Color.BLACK);
+        }
         setContentView(layout);
 
-        resultPort = getIntent().getIntExtra("port", -1);
+        if (launcherMode) {
+            getWindow().setStatusBarColor(Color.BLACK);
+            getWindow().setNavigationBarColor(Color.BLACK);
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+            );
+        }
 
         BiometricManager biometricManager = BiometricManager.from(this);
         int canAuthenticate = biometricManager.canAuthenticate(
@@ -61,8 +84,10 @@ public class MainActivity extends FragmentActivity {
         );
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
             if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
+                if (launcherMode) Toast.makeText(this, "No fingerprint scanner found", Toast.LENGTH_SHORT).show();
                 appendFingerprintError(ERROR_NO_HARDWARE);
             } else if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
+                if (launcherMode) Toast.makeText(this, "No fingerprints enrolled", Toast.LENGTH_SHORT).show();
                 appendFingerprintError(ERROR_NO_ENROLLED_FINGERPRINTS);
             } else {
                 appendFingerprintError("ERROR_UNKNOWN_" + canAuthenticate);
