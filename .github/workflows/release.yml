@@ -99,6 +99,7 @@ jobs:
         mappingFile: app/build/outputs/mapping/release/mapping.txt
         whatsNewDirectory: ${{ env.whatsnew }}
         inAppUpdatePriority: 5
+        changesNotSentForReview: true
       if: |
         github.repository_owner == ${{ env.owner }} &&
         inputs.publish == true
