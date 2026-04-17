@@ -239,6 +239,30 @@ On a crashed or killed Activity the script exits `1` with no output (the `nc` li
 7. `nc` receives the JSON, writes it to a temp file, and exits. The script reads the file, echoes the JSON (so SSH's stderr surfaces it to you), and returns `0` if `auth_result == AUTH_RESULT_SUCCESS`, otherwise `1`.
 8. If the script returns `0`, SSH proceeds with PKCS#11 key-based auth through `tergent`. The key is unlocked by the fingerprint just performed (thanks to the `-u <seconds>` window from step 3 of installation). On `1`, SSH falls back to whatever auth methods the host accepts next, typically password.
 
+### Launcher Mode vs Shell Mode
+
+`MainActivity` branches on whether the `port` int extra is present in the launching intent:
+
+| | Shell mode (`am start --ei port <N>`) | Launcher mode (tap from home screen) |
+| --- | --- | --- |
+| Theme | `Transparent` (windowIsTranslucent, no dim) | `Black` (fullscreen opaque, black background, immersive system bars) |
+| Visual | System `BiometricPrompt` rendered on top of the dimmed Termux window — no visible app switch | Full-screen black, then `BiometricPrompt` centered on it |
+| Result handling | JSON posted to `127.0.0.1:<port>` for the shell script to read | Activity closes silently after the prompt resolves |
+| Missing hardware / no enrolled prints | Silent exit via JSON `ERROR_NO_HARDWARE` / `ERROR_NO_ENROLLED_FINGERPRINTS` | Toast (`"No fingerprint scanner found"` / `"No fingerprints enrolled"`) before closing |
+
+The launcher-mode fallback exists purely so Google Play reviewers (and curious users) see a real app UI when they tap the icon — a transparent-only build was rejected under the "Broken Functionality" policy because the brief black-to-prompt transition read as "app doesn't open" on devices without enrolled biometrics. Selection happens in `MainActivity.onCreate()`:
+
+```java
+int port = getIntent().getIntExtra("port", -1);
+boolean launcherMode = port <= 0;
+if (launcherMode) {
+    setTheme(R.style.Black);  // must be called before super.onCreate()
+}
+super.onCreate(savedInstanceState);
+```
+
+All biometric logic, timeout handling, and the `onWindowFocusChanged` deferred `authenticate()` call are identical between the two modes — only the theme and visible chrome differ.
+
 ## Permissions
 
 The APK requests two permissions:

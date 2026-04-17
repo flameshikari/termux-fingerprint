@@ -10,6 +10,13 @@
         <item name="android:taskCloseExitAnimation">@null</item>
     </style>
 
+    <style name="Black" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@style/NoAnimation</item>
+    </style>
+
     <style name="Transparent" parent="@android:style/Theme.DeviceDefault.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
