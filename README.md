@@ -102,9 +102,8 @@ The script is self-contained: it launches the APK with a randomly chosen loopbac
 Edit `~/.ssh/config`. Minimum working example:
 
 ```ssh-config
-Host *
+Match exec "~/.ssh/bin/fingerprint"
     PKCS11Provider /data/data/com.termux/files/usr/lib/libtergent.so
-    Match exec "~/.ssh/bin/fingerprint"
 ```
 
 For more selective setups see [Usage Examples](#usage-examples).
@@ -136,11 +135,10 @@ Host *.internal.lan
 `tergent` exposes every key in the keystore. If you want a specific alias per host, keep them all listed and let SSH pick by `IdentityFile` fingerprint matching, or use `IdentitiesOnly yes` combined with explicit key material on disk for non-keystore hosts:
 
 ```ssh-config
-Host bastion
+Match host bastion exec "~/.ssh/bin/fingerprint"
     HostName bastion.example.com
     User ops
     PKCS11Provider /data/data/com.termux/files/usr/lib/libtergent.so
-    Match exec "~/.ssh/bin/fingerprint"
 
 Host legacy-server
     HostName 10.0.0.5
